@@ -1,0 +1,882 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuantVerse — BTCUSDT Quant Trading Simulator</title>
+  <meta name="description"
+    content="Professional BTCUSDT quantitative trading simulator with live Binance data, MCMC simulation, and advanced quant strategies">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e17;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-card-hover: rgba(25, 35, 55, 0.9);
+      --border: rgba(99, 102, 241, 0.15);
+      --border-glow: rgba(99, 102, 241, 0.4);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.3);
+      --green: #10b981;
+      --green-glow: rgba(16, 185, 129, 0.25);
+      --red: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.25);
+      --yellow: #f59e0b;
+      --cyan: #06b6d4;
+      --purple: #a855f7;
+      --font-sans: 'Inter', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 14px;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 3px;
+    }
+
+    /* HEADER */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: rgba(10, 14, 23, 0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 16px;
+      color: white;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .logo-text {
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .header-price {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .price-value {
+      min-width: 140px;
+      text-align: right;
+    }
+
+    .price-change {
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .price-change.up {
+      background: var(--green-glow);
+      color: var(--green);
+    }
+
+    .price-change.down {
+      background: var(--red-glow);
+      color: var(--red);
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: var(--green);
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    /* MAIN GRID */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto auto auto auto;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* CARD */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(10px);
+      transition: border-color 0.3s, box-shadow 0.3s;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      border-color: var(--border-glow);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.05);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .card-header .badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-live {
+      background: var(--green-glow);
+      color: var(--green);
+    }
+
+    .badge-running {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--yellow);
+      animation: pulse 1.5s infinite;
+    }
+
+    .badge-done {
+      background: var(--accent-glow);
+      color: var(--accent);
+    }
+
+    .card-body {
+      padding: 16px;
+    }
+
+    /* CHART AREA */
+    .chart-area {
+      grid-column: 1;
+      grid-row: 1;
+      min-height: 380px;
+    }
+
+    .chart-area canvas {
+      width: 100%;
+      height: 340px;
+      display: block;
+    }
+
+    /* STRATEGY PANEL */
+    .strategy-panel {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .strat-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .strat-item:last-child {
+      border-bottom: none;
+    }
+
+    .strat-name {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .strat-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .strat-value {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .strat-signal {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .signal-buy {
+      background: var(--green-glow);
+      color: var(--green);
+    }
+
+    .signal-sell {
+      background: var(--red-glow);
+      color: var(--red);
+    }
+
+    .signal-hold {
+      background: rgba(100, 116, 139, 0.2);
+      color: var(--text-muted);
+    }
+
+    /* EQUITY + PORTFOLIO */
+    .equity-area {
+      grid-column: 1;
+      grid-row: 2;
+      min-height: 220px;
+    }
+
+    .equity-area canvas {
+      width: 100%;
+      height: 180px;
+      display: block;
+    }
+
+    .portfolio-panel {
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .stat-row:last-child {
+      border-bottom: none;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* MONTE CARLO SECTION */
+    .mc-section {
+      grid-column: 1 / -1;
+      grid-row: 3;
+    }
+
+    .mc-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 280px;
+      gap: 16px;
+    }
+
+    .mc-chart canvas {
+      width: 100%;
+      height: 200px;
+      display: block;
+    }
+
+    .mc-stats .stat-row {
+      padding: 6px 0;
+    }
+
+    .mc-progress {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--cyan));
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* BACKTEST SECTION */
+    .bt-section {
+      grid-column: 1 / -1;
+      grid-row: 4;
+    }
+
+    .bt-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .bt-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .bt-metric {
+      text-align: center;
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .bt-metric-value {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .bt-metric-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    /* TRADE LOG */
+    .trade-log {
+      grid-column: 1 / -1;
+    }
+
+    .trade-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .trade-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .trade-table td {
+      padding: 8px 14px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .trade-table tr {
+      transition: background 0.2s;
+    }
+
+    .trade-table tr:hover {
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    .trade-type {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .trade-long {
+      background: var(--green-glow);
+      color: var(--green);
+    }
+
+    .trade-short {
+      background: var(--red-glow);
+      color: var(--red);
+    }
+
+    /* LOADING OVERLAY */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(10, 14, 23, 0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: opacity 0.5s;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loader-text {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .loader-sub {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .main-grid>* {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+      }
+
+      .mc-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bt-metrics {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* ANIMATIONS */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .card {
+      animation: fadeIn 0.5s ease-out backwards;
+    }
+
+    .card:nth-child(2) {
+      animation-delay: 0.05s;
+    }
+
+    .card:nth-child(3) {
+      animation-delay: 0.1s;
+    }
+
+    .card:nth-child(4) {
+      animation-delay: 0.15s;
+    }
+
+    .card:nth-child(5) {
+      animation-delay: 0.2s;
+    }
+
+    .card:nth-child(6) {
+      animation-delay: 0.25s;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- LOADING OVERLAY -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Initializing QuantVerse Engine...</div>
+    <div class="loader-sub" id="loadingStatus">Connecting to Binance API</div>
+  </div>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">QV</div>
+      <div class="logo-text">Quant<span>Verse</span></div>
+    </div>
+    <div class="header-price">
+      <span class="price-value" id="livePrice">$--,---</span>
+      <span class="price-change" id="priceChange">0.00%</span>
+    </div>
+    <div class="header-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Disconnected</span>
+      <span style="margin-left:12px;font-family:var(--font-mono)" id="clockDisplay">--:--:--</span>
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD -->
+  <div class="main-grid">
+
+    <!-- CANDLESTICK CHART -->
+    <div class="card chart-area">
+      <div class="card-header">
+        📊 BTCUSDT — 1H Candlestick
+        <span class="badge badge-live" id="chartBadge">LIVE</span>
+      </div>
+      <div class="card-body">
+        <canvas id="candlestickChart"></canvas>
+      </div>
+    </div>
+
+    <!-- STRATEGY SIGNALS -->
+    <div class="card strategy-panel">
+      <div class="card-header">🧠 Quant Strategies</div>
+      <div class="card-body">
+        <div class="strat-item">
+          <span class="strat-name"><span class="strat-dot" style="background:var(--purple)"></span>GARCH(1,1) Vol</span>
+          <span class="strat-value" id="garchValue">--</span>
+          <span class="strat-signal signal-hold" id="garchSignal">WAIT</span>
+        </div>
+        <div class="strat-item">
+          <span class="strat-name"><span class="strat-dot" style="background:var(--cyan)"></span>Hurst Exponent</span>
+          <span class="strat-value" id="hurstValue">--</span>
+          <span class="strat-signal signal-hold" id="hurstSignal">WAIT</span>
+        </div>
+        <div class="strat-item">
+          <span class="strat-name"><span class="strat-dot" style="background:var(--green)"></span>Fisher
+            Transform</span>
+          <span class="strat-value" id="fisherValue">--</span>
+          <span class="strat-signal signal-hold" id="fisherSignal">WAIT</span>
+        </div>
+        <div class="strat-item">
+          <span class="strat-name"><span class="strat-dot" style="background:var(--yellow)"></span>OU Mean Rev.</span>
+          <span class="strat-value" id="ouValue">--</span>
+          <span class="strat-signal signal-hold" id="ouSignal">WAIT</span>
+        </div>
+        <div class="strat-item">
+          <span class="strat-name"><span class="strat-dot" style="background:var(--red)"></span>Kelly Criterion</span>
+          <span class="strat-value" id="kellyValue">--</span>
+          <span class="strat-signal signal-hold" id="kellySignal">WAIT</span>
+        </div>
+        <div class="strat-item">
+          <span class="strat-name"><span class="strat-dot" style="background:var(--accent)"></span>Shannon
+            Entropy</span>
+          <span class="strat-value" id="entropyValue">--</span>
+          <span class="strat-signal signal-hold" id="entropySignal">WAIT</span>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">COMBINED SIGNAL</div>
+          <div id="combinedSignal" style="font-size:18px;font-weight:900;letter-spacing:1px;color:var(--text-muted)">
+            WAITING</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EQUITY CURVE -->
+    <div class="card equity-area">
+      <div class="card-header">
+        📈 Equity Curve
+        <span class="badge badge-live" id="equityBadge">LIVE</span>
+      </div>
+      <div class="card-body">
+        <canvas id="equityChart"></canvas>
+      </div>
+    </div>
+
+    <!-- PORTFOLIO STATS -->
+    <div class="card portfolio-panel">
+      <div class="card-header">💰 Portfolio</div>
+      <div class="card-body">
+        <div class="stat-row">
+          <span class="stat-label">Balance</span>
+          <span class="stat-value" id="balanceValue">$50.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">P&L</span>
+          <span class="stat-value" id="pnlValue" style="color:var(--text-muted)">$0.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">P&L %</span>
+          <span class="stat-value" id="pnlPctValue" style="color:var(--text-muted)">0.00%</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Risk Mode</span>
+          <span class="stat-value" id="riskMode" style="color:var(--green)">NORMAL 1%</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Win Rate</span>
+          <span class="stat-value" id="winRateValue">--</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Total Trades</span>
+          <span class="stat-value" id="totalTrades">0</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Max Drawdown</span>
+          <span class="stat-value" id="maxDDValue" style="color:var(--red)">0.00%</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Sharpe Ratio</span>
+          <span class="stat-value" id="sharpeValue">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONTE CARLO SECTION -->
+    <div class="card mc-section">
+      <div class="card-header">
+        🎲 Monte Carlo Markov Chain — 1 Billion Simulations
+        <span class="badge badge-running" id="mcBadge">INITIALIZING</span>
+      </div>
+      <div class="card-body">
+        <div class="mc-grid">
+          <div class="mc-chart">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">Distribution
+              of Final Equity</div>
+            <canvas id="mcHistogram"></canvas>
+          </div>
+          <div class="mc-chart">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">Equity Path
+              Percentiles</div>
+            <canvas id="mcPaths"></canvas>
+          </div>
+          <div class="mc-stats">
+            <div class="stat-row"><span class="stat-label">Simulations</span><span class="stat-value"
+                id="mcSimCount">0</span></div>
+            <div class="stat-row"><span class="stat-label">Mean Equity</span><span class="stat-value"
+                id="mcMean">--</span></div>
+            <div class="stat-row"><span class="stat-label">Median (P50)</span><span class="stat-value"
+                id="mcMedian">--</span></div>
+            <div class="stat-row"><span class="stat-label">P5 (Worst)</span><span class="stat-value" id="mcP5"
+                style="color:var(--red)">--</span></div>
+            <div class="stat-row"><span class="stat-label">P95 (Best)</span><span class="stat-value" id="mcP95"
+                style="color:var(--green)">--</span></div>
+            <div class="stat-row"><span class="stat-label">Ruin Prob.</span><span class="stat-value" id="mcRuin"
+                style="color:var(--red)">--</span></div>
+            <div class="stat-row"><span class="stat-label">Profit Prob.</span><span class="stat-value" id="mcProfit"
+                style="color:var(--green)">--</span></div>
+            <div class="stat-row"><span class="stat-label">Optimal Weights</span><span class="stat-value" id="mcWeights"
+                style="font-size:10px">--</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="mc-progress">
+        <div class="progress-text">
+          <span id="mcProgressLabel">Waiting for backtest...</span>
+          <span id="mcETA">ETA: --</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="mcProgressBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACKTEST SECTION -->
+    <div class="card bt-section">
+      <div class="card-header">
+        🔬 Backtest Results — 100 Trades @ 1H
+        <span class="badge badge-running" id="btBadge">RUNNING</span>
+      </div>
+      <div class="card-body">
+        <div class="bt-metrics">
+          <div class="bt-metric">
+            <div class="bt-metric-value" id="btWinRate" style="color:var(--green)">--</div>
+            <div class="bt-metric-label">Win Rate</div>
+          </div>
+          <div class="bt-metric">
+            <div class="bt-metric-value" id="btSharpe" style="color:var(--cyan)">--</div>
+            <div class="bt-metric-label">Sharpe Ratio</div>
+          </div>
+          <div class="bt-metric">
+            <div class="bt-metric-value" id="btMaxDD" style="color:var(--red)">--</div>
+            <div class="bt-metric-label">Max Drawdown</div>
+          </div>
+          <div class="bt-metric">
+            <div class="bt-metric-value" id="btProfit" style="color:var(--green)">--</div>
+            <div class="bt-metric-label">Total Return</div>
+          </div>
+        </div>
+        <div class="bt-grid" style="margin-top:16px">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">Backtest
+              Equity Curve</div>
+            <canvas id="btEquityChart" style="width:100%;height:160px"></canvas>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">Trade
+              Distribution</div>
+            <canvas id="btDistChart" style="width:100%;height:160px"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRADE LOG -->
+    <div class="card trade-log">
+      <div class="card-header">
+        📋 Trade Log
+        <span class="badge badge-live">LIVE</span>
+      </div>
+      <div style="max-height:300px;overflow-y:auto">
+        <table class="trade-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>P&L</th>
+              <th>P&L %</th>
+              <th>Balance</th>
+              <th>Risk</th>
+            </tr>
+          </thead>
+          <tbody id="tradeLogBody">
+            <tr>
+              <td colspan="9" style="text-align:center;color:var(--text-muted);padding:24px">Waiting for signals...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="mcmc-worker-code.js"></script>
+  <script src="quant-strategies.js"></script>
+  <script src="chart-renderer.js"></script>
+  <script src="app.js"></script>
+
+</body>
+
+</html>
+Pressing key...Clicking...Stopping...
+
+Stop Agent
